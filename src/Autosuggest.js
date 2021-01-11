@@ -111,6 +111,32 @@ export default class Autosuggest extends Component {
     containerProps: {},
   };
 
+  static getDerivedStateFromProps(props, state) {
+    const {
+      suggestions,
+      inputProps: { value },
+      shouldRenderSuggestions,
+    } = props;
+    let nextState = {};
+
+    if (
+      suggestions.length > 0 &&
+      shouldRenderSuggestions(value, REASON_SUGGESTIONS_UPDATED)
+    ) {
+      if (state.isCollapsed && !this.justSelectedSuggestion) {
+        nextState = { isCollapsed: false };
+      }
+    } else {
+      nextState = {
+        highlightedSectionIndex: null,
+        highlightedSuggestionIndex: null,
+        highlightedSuggestion: null,
+        valueBeforeUpDown: null,
+      };
+    }
+    return nextState;
+  }
+
   constructor({ alwaysRenderSuggestions }) {
     super();
 
@@ -137,62 +163,39 @@ export default class Autosuggest extends Component {
     this.suggestionsContainer = this.autowhatever.itemsContainer;
   }
 
-  // eslint-disable-next-line camelcase, react/sort-comp
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    // When highlightFirstSuggestion becomes deactivated, if the first suggestion was
-    // set, we should reset the suggestion back to the unselected default state.
-    const shouldResetHighlighting =
-      this.state.highlightedSuggestionIndex === 0 &&
-      this.props.highlightFirstSuggestion &&
-      !nextProps.highlightFirstSuggestion;
-
-    if (shallowEqualArrays(nextProps.suggestions, this.props.suggestions)) {
-      if (
-        nextProps.highlightFirstSuggestion &&
-        nextProps.suggestions.length > 0 &&
-        this.justPressedUpDown === false &&
-        this.justMouseEntered === false
-      ) {
-        this.highlightFirstSuggestion();
-      } else if (shouldResetHighlighting) {
-        this.resetHighlightedSuggestion();
-      }
-    } else {
-      if (this.willRenderSuggestions(nextProps, REASON_SUGGESTIONS_UPDATED)) {
-        if (this.state.isCollapsed && !this.justSelectedSuggestion) {
-          this.revealSuggestions();
-        }
-
-        if (shouldResetHighlighting) {
-          this.resetHighlightedSuggestion();
-        }
-      } else {
-        this.resetHighlightedSuggestion();
-      }
-    }
-  }
-
+  /**
+    When highlightFirstSuggestion becomes deactivated, if the first suggestion was
+    set, we should reset the suggestion back to the unselected default state.
+  */
   componentDidUpdate(prevProps, prevState) {
     const {
-      suggestions,
       onSuggestionHighlighted,
       highlightFirstSuggestion,
+      suggestions,
+      multiSection,
     } = this.props;
+    const { highlightedSuggestionIndex } = this.state;
+    const hasSuggestions = suggestions.length > 0;
+    const suggestionsDidChange = !shallowEqualArrays(
+      suggestions,
+      prevProps.suggestions
+    );
 
-    if (
-      !shallowEqualArrays(suggestions, prevProps.suggestions) &&
-      suggestions.length > 0 &&
-      highlightFirstSuggestion
-    ) {
-      this.highlightFirstSuggestion();
-      return;
+    if (hasSuggestions && suggestionsDidChange && highlightFirstSuggestion) {
+      this.updateHighlightedSuggestion(multiSection ? 0 : null, 0);
     }
-
+    if (
+      prevProps.highlightFirstSuggestion &&
+      !highlightFirstSuggestion &&
+      highlightedSuggestionIndex === 0
+    ) {
+      this.resetHighlightedSuggestion();
+    }
     if (onSuggestionHighlighted) {
       const highlightedSuggestion = this.getHighlightedSuggestion();
       const prevHighlightedSuggestion = prevState.highlightedSuggestion;
 
-      if (highlightedSuggestion != prevHighlightedSuggestion) {
+      if (highlightedSuggestion !== prevHighlightedSuggestion) {
         onSuggestionHighlighted({
           suggestion: highlightedSuggestion,
         });
@@ -384,9 +387,9 @@ export default class Autosuggest extends Component {
     });
   };
 
-  highlightFirstSuggestion = () => {
-    this.updateHighlightedSuggestion(this.props.multiSection ? 0 : null, 0);
-  };
+  // highlightFirstSuggestion = () => {
+  //   this.updateHighlightedSuggestion(this.props.multiSection ? 0 : null, 0);
+  // };
 
   onDocumentMouseUp = () => {
     if (this.pressedSuggestion && !this.justSelectedSuggestion) {
