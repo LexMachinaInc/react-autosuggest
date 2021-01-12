@@ -95,25 +95,18 @@ export default class Autowhatever extends Component {
     this.ensureHighlightedItemIsVisible();
   }
 
-  // eslint-disable-next-line camelcase, react/sort-comp
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    if (nextProps.items !== this.props.items) {
-      this.setSectionsItems(nextProps);
-    }
+  componentDidUpdate(prevProps) {
+    const itemsDidChange = prevProps.items !== this.props.items;
 
-    if (
-      nextProps.items !== this.props.items ||
-      nextProps.multiSection !== this.props.multiSection
-    ) {
-      this.setSectionIterator(nextProps);
+    if (itemsDidChange) {
+      this.setSectionsItems(this.props);
     }
-
-    if (nextProps.theme !== this.props.theme) {
-      this.setTheme(nextProps);
+    if (itemsDidChange || prevProps.multiSection !== this.props.multiSection) {
+      this.setSectionIterator(this.props);
     }
-  }
-
-  componentDidUpdate() {
+    if (prevProps.theme !== this.props.theme) {
+      this.setTheme(this.props);
+    }
     this.ensureHighlightedItemIsVisible();
   }
 
